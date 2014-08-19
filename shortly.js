@@ -1,4 +1,5 @@
 var express = require('express');
+var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
@@ -21,16 +22,27 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+//add sessions
+app.use(session({secret: 'keyboard cat'}));
+
+var checkUser = function(req, res, next) {
+  console.log("res", res)
+  if (req.session.user) {
+    next();
+  } else {
+    req.session.error = 'DENIED!';
+    res.redirect('/login');
+  }
+};
 
 
-app.get('/', 
-function(req, res) {
-  res.render('index');
+app.get('/', function(req, res) {
+  checkUser(req, res, function() {res.render('index')});
+  // res.redirect('/login');
 });
 
-app.get('/create', 
-function(req, res) {
-  res.render('index');
+app.get('/create', function(req, res) {
+  checkUser(req, res, function() {res.render('index')});
 });
 
 app.get('/links', 
@@ -40,8 +52,7 @@ function(req, res) {
   });
 });
 
-app.post('/links', 
-function(req, res) {
+app.post('/links', function(req, res) {
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -74,10 +85,44 @@ function(req, res) {
   });
 });
 
-/************************************************************/
-// Write your authentication routes here
-/************************************************************/
+app.post('/signup', function(req, res) {
+  var inputUsername = req.body.username;
+  var inputPassword = req.body.password;
 
+  new User({username: inputUsername}).fetch().then(function(found) {
+    if (found) {
+      console.log("That username is taken.");
+      res.end();
+    } else {
+
+      var user = new User({
+        username: inputUsername,
+        password: inputPassword
+      });
+
+      user.save().then(function(newUser) {
+        Users.add(newUser);
+        res.send(200, newUser);
+      });
+    }
+  })
+});
+
+app.post('/login', function(req, res) {
+  var inputUsername = req.body.username;
+  var inputPassword = req.body.password;
+
+  new User({username: inputUsername}).fetch().then(function(model) {
+    if (model !== undefined && model.password === inputPassword) {
+      req.session.regenerate(function() {
+        req.session.user = inputUsername;
+      })
+    } else {
+      console.log('Wrong username or password.');
+      res.redirect('/signup');
+    } 
+  })
+});
 
 
 /************************************************************/

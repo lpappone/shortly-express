@@ -26,9 +26,10 @@ app.use(express.static(__dirname + '/public'));
 app.use(session({secret: 'keyboard cat'}));
 
 var inputUsername;
-var inputPassword; 
+var inputPassword;
 
 var restrict = function(req, res, next) {
+  console.log(req.session.user)
   if (req.session.user) {
     next();
   } else {
@@ -39,6 +40,7 @@ var restrict = function(req, res, next) {
 };
 
 var saveNewUser = function(req, res) {
+  console.log('saving new user')
   var user = new User({
     username: inputUsername,
     password: inputPassword
@@ -46,12 +48,14 @@ var saveNewUser = function(req, res) {
 
   user.save().then(function(newUser) {
     Users.add(newUser);
+    console.log('newuser saved');
+    console.log(user)
     req.session.regenerate(function() {
       req.session.user = user.username;
       res.redirect('/');
     });
   });
-}
+};
 
 
 app.get('/', restrict, function(req, res) {
@@ -119,7 +123,23 @@ app.post('/signup', function(req, res) {
       console.log("That username is taken.");
       res.end();
     } else {
-      saveNewUser(req, res);
+      // console.log('at else')
+      // saveNewUser(req, res);
+      console.log('saving new user')
+      var user = new User({
+      username: inputUsername,
+      password: inputPassword
+    });
+    user.save().then(function(newUser) {
+    Users.add(newUser);
+
+    console.log('newuser saved');
+    console.log(user)
+    req.session.regenerate(function() {
+      req.session.user = user.attributes.username;
+      res.redirect('/');
+    });
+  });
     }
   })
 });
@@ -130,24 +150,30 @@ app.post('/login', function(req, res) {
 
   new User({'username': inputUsername}).fetch().then(function(model) {
     console.log(model, 'whole model')
-    if (model === undefined) {
+    if (model === undefined || model === null) {
       // saveNewUser(req, res);
       res.render('login');
     } else if (model.attributes.password === inputPassword) {
       console.log('logging you in');
       req.session.regenerate(function() {
-        console.log('infunction')
         req.session.user = model.attributes.username;
+        // req.session.sucess = "Authenticated as " + model.attributes.username + 'click to <a href="/logout">logout</a>';
         res.redirect('/');
       });
-      
+
     } else {
       console.log(model.attributes.username, model.attributes.password, 'model');
       console.log(inputUsername, inputPassword);
       console.log('Wrong username or password.');
       res.redirect('/signup');
-    } 
+    }
   })
+});
+
+app.get('/logout', function(req, res){
+  req.session.destroy(function() {
+    res.redirect('/');
+  });
 });
 
 

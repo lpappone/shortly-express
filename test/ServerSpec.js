@@ -13,9 +13,9 @@ var Link = require('../app/models/link');
 // Remove the 'x' from beforeEach block when working on
 // authentication tests.
 /************************************************************/
-var beforeEach = function(){}
+var xbeforeEach = function(){}
 /************************************************************/
-var freeport = 4568; 
+var freeport = 4568;
 
 describe('', function() {
 
@@ -61,7 +61,7 @@ describe('', function() {
   });
 
 
-  xdescribe('Link creation:', function(){
+  describe('Link creation:', function(){
 
     var requestWithSession = request.defaults({jar: true});
 

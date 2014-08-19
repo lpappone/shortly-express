@@ -24,6 +24,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 //add sessions
+//app.use(express.cookieParser('secret'));  //don't need this line with Express 4. 
 app.use(session({secret: 'keyboard cat'}));
 
 var inputUsername;
@@ -31,37 +32,46 @@ var inputPassword;
 var salt;
 var hash;
 
+
+//exports.createSession = function(req, res, newUser) {
+//   return req.session.regenerate(function() {
+//     req.session.user = newUser;
+//     res.redirect('/');
+//   });
+// };
+
+// exports.isLoggedIn = function(req, res) {
+//   return req.session ? !! req.session.user : false; 
+// };
+
 var restrict = function(req, res, next) {
   if (req.session.user) {
     next();
   } else {
-    // console.log('res', res)
-    req.session.error = 'DENIED!';
+    // req.session.error = 'DENIED!';
     res.redirect('/login');
   }
 };
 
-var saveNewUser = function(req, res) {
-  console.log('saving new user')
-  var user = new User({
-    username: inputUsername,
-    password: inputPassword
-  });
+// var saveNewUser = function(req, res) {
+//   console.log('saving new user')
+//   var user = new User({
+//     username: inputUsername,
+//     password: inputPassword
+//   });
 
-  user.save().then(function(newUser) {
-    Users.add(newUser);
-    console.log('newuser saved');
-    console.log(user)
-    req.session.regenerate(function() {
-      req.session.user = user.username;
-      res.redirect('/');
-    });
-  });
-};
-
-
-app.get('/', restrict, function(req, res) {
-   res.render('index');
+//   user.save().then(function(newUser) {
+//     Users.add(newUser);
+//     console.log('newuser saved');
+//     console.log(user)
+//     req.session.regenerate(function() {
+//       req.session.user = user.username;
+//       res.redirect('/');
+//     });
+//   });
+// };
+app.get('/', restrict, function(req, res) {  //third arg to app.get is success function. when 
+   res.render('index');                       //restrict is invoked, have access to original function. 
 });
 
 app.get('/create', restrict, function(req, res) {
@@ -118,35 +128,46 @@ app.post('/links', function(req, res) {
 app.post('/signup', function(req, res) {
   inputUsername = req.body.username;
   inputPassword = req.body.password;
-  console.log(inputUsername, inputPassword)
+  // console.log(inputUsername, inputPassword)
 
   new User({username: inputUsername}).fetch().then(function(found) {
     if (found) {
       console.log("That username is taken.");
-      res.end();
+      res.redirect('/signup');
     } else {
       // console.log('at else')
       // saveNewUser(req, res);
-      console.log('saving new user')
-      salt = bcrypt.genSaltSync(1);
-      hash = bcrypt.hashSync(inputPassword, salt);
-      var user = new User({
-      username: inputUsername,
-      password: hash
-    });
-    user.save().then(function(newUser) {
-    Users.add(newUser);
+      // console.log('saving new user')
+      // salt = bcrypt.genSaltSync(1);
+      // hash = bcrypt.hashSync(inputPassword, salt);
+      bcrypt.hash(inputPassword, null, null, function(err, hash) {
+        Users.create({
+          username: inputUsername,
+          password: hash
+        }).then(function(user) {
+          //log them in
+          req.session.regenerate(function() {
+            req.session.user = user.attributes.username;
+            res.redirect('/');
+          })
+    //   })
+    //   var user = new User({
+    //   username: inputUsername,
+    //   password: hash
+    // });
+    // user.save().then(function(newUser) {
+    // Users.add(newUser);
 
-    console.log('newuser saved');
-    console.log(user)
-    req.session.regenerate(function() {
-      req.session.user = user.attributes.username;
-      res.redirect('/');
+  //bcrypt.hash(arg, null(autogenerate salt), null(number of interations), function(err, hash))
+//Users.create does implicit save and add.  Just alternate syntax. 
     });
   });
     }
   })
 });
+//better to put hashing stuff in user model, so that there's not unneccessary internation between
+//app and model.  Dependency going in wrong direction.  
+
 
 app.post('/login', function(req, res) {
   inputUsername = req.body.username;
@@ -156,16 +177,24 @@ app.post('/login', function(req, res) {
 
   new User({'username': inputUsername}).fetch().then(function(model) {
     console.log(model, 'whole model')
-    if (model === undefined || model === null) {
-      // saveNewUser(req, res);
-      res.render('login');
+    if (!model) {
+      //if user doesn't exist yet, send back to login
+      res.redirect('/login');
     } else if (model.attributes.password === inputPassword) {
       console.log('logging you in');
       req.session.regenerate(function() {
         req.session.user = model.attributes.username;
-        // req.session.sucess = "Authenticated as " + model.attributes.username + 'click to <a href="/logout">logout</a>';
         res.redirect('/');
+        //bcrypt.compare(inputPassword, model.get('password'), function(match) {
+          // if (match) {
+          // util.createSession(req, res, user);  //Fred has this in util file, need to fix syntax above
+          //   res.redirect('/')
+          // } else {
+          //   res.redirect('/login');
+          // }
+        })//use bcrypt.hash above to use bcrypt.compare here
       });
+
 
     } else {
       console.log(model.attributes.username, model.attributes.password, 'model');

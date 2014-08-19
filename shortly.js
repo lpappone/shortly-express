@@ -25,28 +25,54 @@ app.use(express.static(__dirname + '/public'));
 //add sessions
 app.use(session({secret: 'keyboard cat'}));
 
-var checkUser = function(req, res, next) {
-  console.log("res", res)
+var inputUsername;
+var inputPassword; 
+
+var restrict = function(req, res, next) {
+  console.log('in restrict function');
   if (req.session.user) {
     next();
   } else {
+    console.log('res', res)
     req.session.error = 'DENIED!';
     res.redirect('/login');
   }
 };
 
+var saveNewUser = function(req, res) {
+  console.log('saving new user')
+  var user = new User({
+    username: inputUsername,
+    password: inputPassword
+  });
 
-app.get('/', function(req, res) {
-  checkUser(req, res, function() {res.render('index')});
-  // res.redirect('/login');
+  user.save().then(function(newUser) {
+    Users.add(newUser);
+    req.session.regenerate(function() {
+      req.session.user = user.username;
+      res.redirect('/');
+    });
+  });
+}
+
+
+app.get('/', restrict, function(req, res) {
+   res.render('index');
 });
 
-app.get('/create', function(req, res) {
-  checkUser(req, res, function() {res.render('index')});
+app.get('/create', restrict, function(req, res) {
+  res.render('index');
 });
 
-app.get('/links', 
-function(req, res) {
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+app.get('/links', restrict, function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
@@ -86,38 +112,38 @@ app.post('/links', function(req, res) {
 });
 
 app.post('/signup', function(req, res) {
-  var inputUsername = req.body.username;
-  var inputPassword = req.body.password;
+  inputUsername = req.body.username;
+  inputPassword = req.body.password;
 
   new User({username: inputUsername}).fetch().then(function(found) {
     if (found) {
       console.log("That username is taken.");
       res.end();
     } else {
-
-      var user = new User({
-        username: inputUsername,
-        password: inputPassword
-      });
-
-      user.save().then(function(newUser) {
-        Users.add(newUser);
-        res.send(200, newUser);
-      });
+      saveNewUser(req, res);
     }
   })
 });
 
 app.post('/login', function(req, res) {
-  var inputUsername = req.body.username;
-  var inputPassword = req.body.password;
+  inputUsername = req.body.username;
+  inputPassword = req.body.password;
 
-  new User({username: inputUsername}).fetch().then(function(model) {
-    if (model !== undefined && model.password === inputPassword) {
+  new User({'username': inputUsername}).fetch().then(function(model) {
+    console.log(model, 'whole model')
+    if (model === undefined) {
+      saveNewUser(req, res);
+    } else if (model.attributes.password === inputPassword) {
+      console.log('logging you in');
       req.session.regenerate(function() {
-        req.session.user = inputUsername;
-      })
+        console.log('infunction')
+        req.session.user = model.attributes.username;
+        res.redirect('/');
+      });
+      
     } else {
+      console.log(model.attributes.username, model.attributes.password, 'model');
+      console.log(inputUsername, inputPassword);
       console.log('Wrong username or password.');
       res.redirect('/signup');
     } 
@@ -154,4 +180,4 @@ app.get('/*', function(req, res) {
 });
 
 console.log('Shortly is listening on 4568');
-app.listen(4568);
+app.listen(4566);

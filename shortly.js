@@ -3,6 +3,7 @@ var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -27,9 +28,10 @@ app.use(session({secret: 'keyboard cat'}));
 
 var inputUsername;
 var inputPassword;
+var salt;
+var hash;
 
 var restrict = function(req, res, next) {
-  console.log(req.session.user)
   if (req.session.user) {
     next();
   } else {
@@ -126,9 +128,11 @@ app.post('/signup', function(req, res) {
       // console.log('at else')
       // saveNewUser(req, res);
       console.log('saving new user')
+      salt = bcrypt.genSaltSync(1);
+      hash = bcrypt.hashSync(inputPassword, salt);
       var user = new User({
       username: inputUsername,
-      password: inputPassword
+      password: hash
     });
     user.save().then(function(newUser) {
     Users.add(newUser);
@@ -146,7 +150,9 @@ app.post('/signup', function(req, res) {
 
 app.post('/login', function(req, res) {
   inputUsername = req.body.username;
-  inputPassword = req.body.password;
+  salt = bcrypt.genSaltSync(1);
+  inputPassword = bcrypt.hashSync(req.body.password, salt);
+  console.log(inputPassword)
 
   new User({'username': inputUsername}).fetch().then(function(model) {
     console.log(model, 'whole model')

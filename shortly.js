@@ -29,18 +29,16 @@ var inputUsername;
 var inputPassword; 
 
 var restrict = function(req, res, next) {
-  console.log('in restrict function');
   if (req.session.user) {
     next();
   } else {
-    console.log('res', res)
+    // console.log('res', res)
     req.session.error = 'DENIED!';
     res.redirect('/login');
   }
 };
 
 var saveNewUser = function(req, res) {
-  console.log('saving new user')
   var user = new User({
     username: inputUsername,
     password: inputPassword
@@ -114,6 +112,7 @@ app.post('/links', function(req, res) {
 app.post('/signup', function(req, res) {
   inputUsername = req.body.username;
   inputPassword = req.body.password;
+  console.log(inputUsername, inputPassword)
 
   new User({username: inputUsername}).fetch().then(function(found) {
     if (found) {
@@ -132,7 +131,8 @@ app.post('/login', function(req, res) {
   new User({'username': inputUsername}).fetch().then(function(model) {
     console.log(model, 'whole model')
     if (model === undefined) {
-      saveNewUser(req, res);
+      // saveNewUser(req, res);
+      res.render('login');
     } else if (model.attributes.password === inputPassword) {
       console.log('logging you in');
       req.session.regenerate(function() {
@@ -180,4 +180,4 @@ app.get('/*', function(req, res) {
 });
 
 console.log('Shortly is listening on 4568');
-app.listen(4566);
+app.listen(4568);

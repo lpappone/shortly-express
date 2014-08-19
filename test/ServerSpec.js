@@ -13,13 +13,14 @@ var Link = require('../app/models/link');
 // Remove the 'x' from beforeEach block when working on
 // authentication tests.
 /************************************************************/
-var beforeEach = function(){};
+var beforeEach = function(){}
 /************************************************************/
-var freeport = 4566; 
+var freeport = 4568; 
 
 describe('', function() {
 
   beforeEach(function() {
+    console.log('entering before each')
     // log out currently signed in user
     request('http://127.0.0.1:'+freeport+'/logout', function(error, res, body) {});
 
@@ -40,10 +41,10 @@ describe('', function() {
       .del()
       .catch(function(error) {
         // uncomment when writing authentication tests
-        // throw {
-        //   type: 'DatabaseError',
-        //   message: 'Failed to create test setup data'
-        // };
+        throw {
+          type: 'DatabaseError',
+          message: 'Failed to create test setup data'
+        };
       });
 
     // delete user Phillip from db so it can be created later for the test
@@ -52,12 +53,13 @@ describe('', function() {
       .del()
       .catch(function(error) {
         // uncomment when writing authentication tests
-        // throw {
-        //   type: 'DatabaseError',
-        //   message: 'Failed to create test setup data'
-        // };
+        throw {
+          type: 'DatabaseError',
+          message: 'Failed to create test setup data'
+        };
       });
   });
+
 
   xdescribe('Link creation:', function(){
 
@@ -333,3 +335,4 @@ describe('', function() {
   }); // 'Account Login'
 
 });
+
